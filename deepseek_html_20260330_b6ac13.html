@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#4a90e2">
+    <title>3D Low-Poly Car Simulator | Junior Racer</title>
+    <!-- PWA Manifest link -->
+    <link rel="manifest" href="manifest.json">
+    <!-- Three.js CDN -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js"
+            }
+        }
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            overflow: hidden;
+            font-family: 'Segoe UI', 'Poppins', system-ui, -apple-system, sans-serif;
+            touch-action: none;
+            background: #1a2a3a;
+        }
+
+        /* Welcome Screen */
+        #welcome-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            z-index: 200;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.5s ease;
+        }
+
+        .welcome-card {
+            background: rgba(0,0,0,0.75);
+            backdrop-filter: blur(12px);
+            border-radius: 48px;
+            padding: 30px 40px;
+            width: 90%;
+            max-width: 550px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.3);
+            box-shadow: 0 25px 40px rgba(0,0,0,0.4);
+            color: white;
+        }
+
+        .logo-area {
+            margin-bottom: 20px;
+        }
+        .logo-img {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid gold;
+            background: #ddd;
+        }
+
+        h1 {
+            margin: 16px 0 8px;
+            font-size: 2rem;
+            letter-spacing: 1px;
+        }
+
+        .vehicle-select {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        .vehicle-option {
+            background: #2c3e50;
+            padding: 12px 20px;
+            border-radius: 60px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: bold;
+            border: 2px solid transparent;
+        }
+        .vehicle-option.selected {
+            background: #e67e22;
+            border-color: #f1c40f;
+            transform: scale(1.02);
+        }
+        .color-palette {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 12px;
+            margin: 20px 0;
+        }
+        .color-swatch {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 3px solid white;
+            transition: transform 0.1s;
+            box-shadow: 0 2px 6px black;
+        }
+        .color-swatch.selected {
+            transform: scale(1.2);
+            border-color: gold;
+        }
+        .max-speed-slider-welcome {
+            margin: 20px 0;
+        }
+        .max-speed-slider-welcome label {
+            font-weight: bold;
+        }
+        input[type="range"] {
+            width: 100%;
+            margin-top: 8px;
+        }
+        .start-btn {
+            background: #27ae60;
+            border: none;
+            padding: 14px 28px;
+            font-size: 1.4rem;
+            font-weight: bold;
+            border-radius: 60px;
+            color: white;
+            margin-top: 20px;
+            cursor: pointer;
+            width: 100%;
+            transition: 0.2s;
+        }
+        .start-btn:active { transform: scale(0.97);}
+
+        /* Driving UI */
+        #game-ui {
+            position: fixed;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            pointer-events: none;
+            z-index: 100;
+        }
+        .controls-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+            pointer-events: auto;
+        }
+        .steering-panel {
+            background: rgba(0,0,0,0.55);
+            backdrop-filter: blur(8px);
+            border-radius: 120px;
+            width: 130px;
+            height: 130px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid rgba(255,255,255,0.5);
+            box-shadow: 0 8px 20px black;
+        }
+        .steering-wheel-icon {
+            width: 90px;
+            height: 90px;
+            background: #2c3e50;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            font-weight: bold;
+            color: #ecf0f1;
+            border: 4px solid #bdc3c7;
+            transition: transform 0.05s linear;
+            cursor: grab;
+            touch-action: none;
+        }
+        .pedals {
+            display: flex;
+            gap: 20px;
+        }
+        .gas-pedal {
+            width: 90px;
+            height: 140px;
+            background: #2ecc71;
+            border-radius: 30px;
+            box-shadow: 0 8px 0 #1e8449;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            transition: 0.05s linear;
+            touch-action: manipulation;
+        }
+        .brake-pedal {
+            width: 90px;
+            height: 140px;
+            background: #e74c3c;
+            border-radius: 30px;
+            box-shadow: 0 8px 0 #c0392b;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            transition: 0.05s linear;
+            touch-action: manipulation;
+        }
+        .gas-pedal:active, .brake-pedal:active {
+            transform: translateY(4px);
+            box-shadow: 0 4px 0;
+        }
+        .speed-governor-ui {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
+            padding: 12px 20px;
+            border-radius: 40px;
+            color: white;
+            font-weight: bold;
+            z-index: 150;
+            pointer-events: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            min-width: 160px;
+        }
+        .speedometer {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
+            padding: 8px 18px;
+            border-radius: 40px;
+            color: #f39c12;
+            font-family: monospace;
+            font-size: 1.6rem;
+            font-weight: bold;
+            z-index: 150;
+        }
+        @media (max-width: 700px) {
+            .steering-panel { width: 100px; height: 100px; }
+            .steering-wheel-icon { width: 70px; height: 70px; font-size: 36px; }
+            .gas-pedal, .brake-pedal { width: 70px; height: 110px; font-size: 22px; }
+        }
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- WELCOME SCREEN -->
+    <div id="welcome-screen">
+        <div class="welcome-card">
+            <div class="logo-area">
+                <img id="son-logo-img" class="logo-img" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='45' fill='%23f4d03f'/%3E%3Ccircle cx='35' cy='40' r='5' fill='black'/%3E%3Ccircle cx='65' cy='40' r='5' fill='black'/%3E%3Cpath d='M35 65 Q50 80 65 65' stroke='black' stroke-width='4' fill='none' stroke-linecap='round'/%3E%3Ctext x='50' y='30' font-size='24' text-anchor='middle' fill='%23b3413b'%3E⭐%3C/text%3E%3C/svg%3E" alt="Son's Avatar">
+            </div>
+            <h2>🚗 Junior Racer 🚗</h2>
+            <div class="vehicle-select">
+                <div class="vehicle-option" data-vehicle="car">🚘 Car</div>
+                <div class="vehicle-option" data-vehicle="bus">🚌 Bus</div>
+            </div>
+            <div class="color-palette" id="color-palette">
+                <div class="color-swatch" style="background:#e34234;" data-color="#e34234"></div>
+                <div class="color-swatch" style="background:#3a6ea5;" data-color="#3a6ea5"></div>
+                <div class="color-swatch" style="background:#4caf50;" data-color="#4caf50"></div>
+                <div class="color-swatch" style="background:#f4c542;" data-color="#f4c542"></div>
+                <div class="color-swatch" style="background:#ff8c42;" data-color="#ff8c42"></div>
+                <div class="color-swatch" style="background:#9b59b6;" data-color="#9b59b6"></div>
+                <div class="color-swatch" style="background:#1abc9c;" data-color="#1abc9c"></div>
+            </div>
+            <div class="max-speed-slider-welcome">
+                <label>🔧 Max Speed Limit: <span id="welcome-speed-val">50</span> km/h</label>
+                <input type="range" id="welcome-max-speed" min="20" max="120" step="5" value="50">
+            </div>
+            <button class="start-btn" id="start-game">🏁 START DRIVING 🏁</button>
+        </div>
+    </div>
+
+    <!-- In-Game UI -->
+    <div id="game-ui" class="hidden">
+        <div class="controls-row">
+            <div class="steering-panel" id="steering-panel">
+                <div class="steering-wheel-icon" id="steering-wheel">⌘</div>
+            </div>
+            <div class="pedals">
+                <div class="gas-pedal" id="gas-pedal">GAS</div>
+                <div class="brake-pedal" id="brake-pedal">BRAKE</div>
+            </div>
+        </div>
+    </div>
+    <div id="speed-governor" class="speed-governor-ui hidden">
+        <span>⚙️ MAX SPEED</span>
+        <input type="range" id="max-speed-slider" min="20" max="120" step="5" value="50">
+        <span id="max-speed-value">50</span> km/h
+    </div>
+    <div id="speedometer" class="speedometer hidden">
+        🚀 <span id="speed-value">0</span> km/h
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+
+        // --- GLOBALS ---
+        let scene, camera, renderer;
+        let carGroup;
+        let carBody, wheels = [];
+        let currentSpeed = 0;
+        let maxSpeed = 50;
+        let steeringAngle = 0;
+        let gasPressed = false;
+        let brakePressed = false;
+        let isSteeringActive = false;
+        let carPositionX = 0;
+        const FRICTION = 0.98;
+        const ACC_FORCE = 2.2;
+        const BRAKE_FORCE = 3.5;
+        const REVERSE_MAX_SPEED = -25;
+        const STEERING_SENSITIVITY = 0.035;
+        
+        let vehicleType = "car";
+        let carColor = "#e34234";
+        
+        const ROAD_WIDTH = 8;
+        const BUILDING_COLORS = [0x66ccff, 0xffaa66, 0x88ff88, 0xff88aa, 0xaa88ff, 0xffaa44, 0x44ccaa];
+        
+        let carZ = 0;
+        let buildingPool = [];
+        let nextBuildingZ = -15;
+        const BUILDING_SPACING = 4.5;
+        
+        let cameraOffset = new THREE.Vector3(0, 4.5, 8);
+        
+        function createLowPolyCar(colorHex, type) {
+            const group = new THREE.Group();
+            let boxWidth = 0.9, boxHeight = 0.5, boxDepth = 1.2;
+            let wheelRadius = 0.12, wheelWidth = 0.1;
+            if (type === "bus") {
+                boxWidth = 0.95;
+                boxHeight = 0.7;
+                boxDepth = 1.8;
+                wheelRadius = 0.14;
+                wheelWidth = 0.12;
+            }
+            const bodyGeo = new THREE.BoxGeometry(boxWidth, boxHeight, boxDepth);
+            const bodyMat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.4, metalness: 0.1 });
+            const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
+            bodyMesh.castShadow = true;
+            bodyMesh.receiveShadow = true;
+            bodyMesh.position.y = boxHeight/2;
+            group.add(bodyMesh);
+            
+            const roofGeo = new THREE.BoxGeometry(boxWidth*0.85, boxHeight*0.3, boxDepth*0.9);
+            const roofMat = new THREE.MeshStandardMaterial({ color: 0xdddddd, roughness: 0.6 });
+            const roofMesh = new THREE.Mesh(roofGeo, roofMat);
+            roofMesh.position.y = boxHeight + 0.05;
+            group.add(roofMesh);
+            
+            const wheelGeo = new THREE.CylinderGeometry(wheelRadius, wheelRadius, wheelWidth, 12);
+            const wheelMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8 });
+            const positions = [
+                [-boxWidth/2 + 0.2, 0.1, -boxDepth/2 + 0.2], [ boxWidth/2 - 0.2, 0.1, -boxDepth/2 + 0.2],
+                [-boxWidth/2 + 0.2, 0.1,  boxDepth/2 - 0.2], [ boxWidth/2 - 0.2, 0.1,  boxDepth/2 - 0.2]
+            ];
+            positions.forEach(pos => {
+                const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+                wheel.rotation.z = Math.PI/2;
+                wheel.position.set(pos[0], pos[1], pos[2]);
+                wheel.castShadow = true;
+                group.add(wheel);
+                wheels.push(wheel);
+            });
+            return group;
+        }
+        
+        function createBuilding(x, z, color) {
+            const width = 0.7 + Math.random() * 0.5;
+            const height = 0.8 + Math.random() * 1.2;
+            const depth = 0.7 + Math.random() * 0.5;
+            const geometry = new THREE.BoxGeometry(width, height, depth);
+            const material = new THREE.MeshStandardMaterial({ color: color, roughness: 0.5 });
+            const cube = new THREE.Mesh(geometry, material);
+            cube.position.set(x, height/2, z);
+            cube.castShadow = true;
+            cube.receiveShadow = true;
+            return cube;
+        }
+        
+        function initWorld() {
+            const roadMat = new THREE.MeshStandardMaterial({ color: 0x4a4e54, roughness: 0.7, metalness: 0.1 });
+            const roadPlane = new THREE.Mesh(new THREE.PlaneGeometry(ROAD_WIDTH, 200), roadMat);
+            roadPlane.rotation.x = -Math.PI/2;
+            roadPlane.position.y = -0.05;
+            roadPlane.receiveShadow = true;
+            scene.add(roadPlane);
+            
+            const lineMat = new THREE.MeshStandardMaterial({ color: 0xf1c40f });
+            for (let z = -40; z <= 40; z += 2.5) {
+                const line = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.05, 1.2), lineMat);
+                line.position.set(0, 0.02, z);
+                scene.add(line);
+            }
+            
+            for (let z = -30; z <= 30; z += BUILDING_SPACING) {
+                const side = (Math.random() > 0.5 ? 1 : -1);
+                const xPos = side * (ROAD_WIDTH/2 + 0.8 + Math.random() * 1.2);
+                const colorIdx = Math.floor(Math.random() * BUILDING_COLORS.length);
+                const building = createBuilding(xPos, z, BUILDING_COLORS[colorIdx]);
+                scene.add(building);
+                buildingPool.push({ mesh: building, originalZ: z });
+            }
+            nextBuildingZ = 30;
+        }
+        
+        function updateBuildings(carWorldZ) {
+            const recycleThreshold = carWorldZ - 12;
+            buildingPool.forEach(b => {
+                if (b.mesh.position.z < recycleThreshold - 5) {
+                    let newZ = nextBuildingZ;
+                    const side = (Math.random() > 0.5 ? 1 : -1);
+                    const xPos = side * (ROAD_WIDTH/2 + 0.8 + Math.random() * 1.2);
+                    b.mesh.position.x = xPos;
+                    b.mesh.position.z = newZ;
+                    const newColor = BUILDING_COLORS[Math.floor(Math.random() * BUILDING_COLORS.length)];
+                    b.mesh.material.color.setHex(newColor);
+                    const newH = 0.8 + Math.random() * 1.2;
+                    b.mesh.scale.set(1, newH / (b.mesh.geometry.parameters.height || 1), 1);
+                    b.mesh.position.y = newH/2;
+                    nextBuildingZ += BUILDING_SPACING;
+                }
+            });
+        }
+        
+        function initSteeringDrag() {
+            const wheelDiv = document.getElementById('steering-wheel');
+            let startAngle = 0;
+            let active = false;
+            
+            function getAngleFromCenter(clientX, clientY, rect) {
+                const centerX = rect.left + rect.width/2;
+                const centerY = rect.top + rect.height/2;
+                const dx = clientX - centerX;
+                const dy = clientY - centerY;
+                return Math.atan2(dy, dx);
+            }
+            
+            function onStart(e) {
+                e.preventDefault();
+                active = true;
+                const rect = wheelDiv.getBoundingClientRect();
+                const client = e.touches ? e.touches[0] : e;
+                startAngle = getAngleFromCenter(client.clientX, client.clientY, rect);
+                isSteeringActive = true;
+            }
+            
+            function onMove(e) {
+                if (!active) return;
+                e.preventDefault();
+                const rect = wheelDiv.getBoundingClientRect();
+                const client = e.touches ? e.touches[0] : e;
+                const currentAngle = getAngleFromCenter(client.clientX, client.clientY, rect);
+                let delta = currentAngle - startAngle;
+                delta = delta * (180/Math.PI);
+                let newRot = Math.min(45, Math.max(-45, delta));
+                wheelDiv.style.transform = `rotate(${newRot}deg)`;
+                steeringAngle = (newRot / 45) * 0.7;
+                startAngle = currentAngle;
+            }
+            
+            function onEnd(e) {
+                active = false;
+                isSteeringActive = false;
+                wheelDiv.style.transform = `rotate(0deg)`;
+                steeringAngle = 0;
+            }
+            
+            wheelDiv.addEventListener('mousedown', onStart);
+            window.addEventListener('mousemove', onMove);
+            window.addEventListener('mouseup', onEnd);
+            wheelDiv.addEventListener('touchstart', onStart);
+            window.addEventListener('touchmove', onMove);
+            window.addEventListener('touchend', onEnd);
+        }
+        
+        function updatePhysics(deltaTime) {
+            let dt = Math.min(deltaTime, 0.033);
+            if (gasPressed) {
+                currentSpeed += ACC_FORCE * dt;
+                if (currentSpeed > maxSpeed) currentSpeed = maxSpeed;
+            }
+            if (brakePressed) {
+                if (currentSpeed > 0) {
+                    currentSpeed -= BRAKE_FORCE * dt;
+                    if (currentSpeed < 0) currentSpeed = 0;
+                } else {
+                    currentSpeed -= BRAKE_FORCE * dt;
+                    if (currentSpeed < REVERSE_MAX_SPEED) currentSpeed = REVERSE_MAX_SPEED;
+                }
+            }
+            if (!gasPressed && !brakePressed) {
+                currentSpeed *= FRICTION;
+                if (Math.abs(currentSpeed) < 0.2) currentSpeed = 0;
+            }
+            
+            let effectiveSteer = steeringAngle;
+            if (currentSpeed < 0) effectiveSteer = -steeringAngle;
+            if (Math.abs(currentSpeed) > 0.5) {
+                let turnFactor = effectiveSteer * STEERING_SENSITIVITY * (Math.abs(currentSpeed)/maxSpeed) * 1.5;
+                carPositionX += turnFactor * Math.abs(currentSpeed) * dt;
+                const limit = ROAD_WIDTH/2 - 0.8;
+                carPositionX = Math.min(limit, Math.max(-limit, carPositionX));
+            }
+            
+            carZ += currentSpeed * dt;
+            carGroup.position.x = carPositionX;
+            carGroup.position.z = carZ;
+            camera.position.x = carPositionX * 0.5;
+            camera.position.z = carZ + cameraOffset.z;
+            camera.position.y = cameraOffset.y;
+            camera.lookAt(carPositionX, 0.5, carZ);
+            
+            updateBuildings(carZ);
+            document.getElementById('speed-value').innerText = Math.floor(Math.abs(currentSpeed));
+        }
+        
+        function animate() {
+            let now = performance.now();
+            if (!window.lastTime) window.lastTime = now;
+            let dt = Math.min(0.033, (now - window.lastTime) / 1000);
+            window.lastTime = now;
+            updatePhysics(dt);
+            renderer.render(scene, camera);
+            requestAnimationFrame(animate);
+        }
+        
+        function initThree() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87CEEB);
+            scene.fog = new THREE.FogExp2(0x87CEEB, 0.008);
+            camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 4.2, 7);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.body.appendChild(renderer.domElement);
+            
+            const ambient = new THREE.AmbientLight(0x404060);
+            scene.add(ambient);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+            dirLight.position.set(5, 10, 7);
+            dirLight.castShadow = true;
+            scene.add(dirLight);
+            const fillLight = new THREE.PointLight(0x4466cc, 0.3);
+            fillLight.position.set(0, 5, 0);
+            scene.add(fillLight);
+            
+            initWorld();
+        }
+        
+        function spawnCar() {
+            if (carGroup) scene.remove(carGroup);
+            wheels = [];
+            carGroup = createLowPolyCar(carColor, vehicleType);
+            carGroup.position.set(0, 0, 0);
+            carGroup.castShadow = true;
+            scene.add(carGroup);
+            carZ = 0;
+            carPositionX = 0;
+            currentSpeed = 0;
+            steeringAngle = 0;
+        }
+        
+        // Welcome screen handlers
+        const welcomeScreen = document.getElementById('welcome-screen');
+        const gameUI = document.getElementById('game-ui');
+        const speedGov = document.getElementById('speed-governor');
+        const speedoDiv = document.getElementById('speedometer');
+        
+        let selectedColor = "#e34234";
+        document.querySelectorAll('.color-swatch').forEach(sw => {
+            sw.addEventListener('click', () => {
+                document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+                sw.classList.add('selected');
+                selectedColor = sw.getAttribute('data-color');
+            });
+        });
+        
+        let selectedVehicle = "car";
+        document.querySelectorAll('.vehicle-option').forEach(opt => {
+            opt.addEventListener('click', () => {
+                document.querySelectorAll('.vehicle-option').forEach(o => o.classList.remove('selected'));
+                opt.classList.add('selected');
+                selectedVehicle = opt.getAttribute('data-vehicle');
+            });
+        });
+        
+        const welcomeSpeedSlider = document.getElementById('welcome-max-speed');
+        const welcomeSpeedVal = document.getElementById('welcome-speed-val');
+        welcomeSpeedSlider.addEventListener('input', () => {
+            welcomeSpeedVal.innerText = welcomeSpeedSlider.value;
+        });
+        
+        document.getElementById('start-game').addEventListener('click', () => {
+            maxSpeed = parseFloat(welcomeSpeedSlider.value);
+            carColor = selectedColor;
+            vehicleType = selectedVehicle;
+            
+            if (!renderer) initThree();
+            else {
+                while(buildingPool.length) {
+                    scene.remove(buildingPool.pop().mesh);
+                }
+                buildingPool = [];
+                initWorld();
+            }
+            spawnCar();
+            camera.position.set(0, 4.2, 7);
+            camera.lookAt(0,0,0);
+            carZ = 0;
+            currentSpeed = 0;
+            
+            welcomeScreen.classList.add('hidden');
+            gameUI.classList.remove('hidden');
+            speedGov.classList.remove('hidden');
+            speedoDiv.classList.remove('hidden');
+            
+            const gameMaxSlider = document.getElementById('max-speed-slider');
+            gameMaxSlider.value = maxSpeed;
+            document.getElementById('max-speed-value').innerText = maxSpeed;
+            gameMaxSlider.oninput = (e) => {
+                maxSpeed = parseFloat(e.target.value);
+                document.getElementById('max-speed-value').innerText = maxSpeed;
+            };
+            
+            const gasPedal = document.getElementById('gas-pedal');
+            const brakePedal = document.getElementById('brake-pedal');
+            const clearPress = () => { gasPressed = false; brakePressed = false; };
+            gasPedal.onmousedown = (e) => { e.preventDefault(); gasPressed = true; };
+            brakePedal.onmousedown = (e) => { e.preventDefault(); brakePressed = true; };
+            window.onmouseup = clearPress;
+            gasPedal.ontouchstart = (e) => { e.preventDefault(); gasPressed = true; };
+            brakePedal.ontouchstart = (e) => { e.preventDefault(); brakePressed = true; };
+            window.ontouchend = clearPress;
+            
+            initSteeringDrag();
+            window.lastTime = performance.now();
+            if (!window.animStarted) { animate(); window.animStarted = true; }
+        });
+        
+        document.querySelector('.color-swatch').classList.add('selected');
+        document.querySelector('[data-vehicle="car"]').classList.add('selected');
+    </script>
+</body>
+</html>
