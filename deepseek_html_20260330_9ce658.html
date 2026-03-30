@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#4a90e2">
+    <title>3D Car Simulator | Curves & Junctions</title>
+    <link rel="manifest" href="manifest.json">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            touch-action: none;
+            background: #000;
+        }
+
+        #welcome-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            z-index: 200;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .welcome-card {
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(12px);
+            border-radius: 48px;
+            padding: 30px 40px;
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+        }
+
+        .logo-img {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid gold;
+            margin-bottom: 15px;
+        }
+
+        h2 { margin: 10px 0; font-size: 1.8rem; }
+
+        .vehicle-select {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        .vehicle-option {
+            background: #2c3e50;
+            padding: 10px 20px;
+            border-radius: 60px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .vehicle-option.selected {
+            background: #e67e22;
+            transform: scale(1.05);
+        }
+        .color-palette {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        .color-swatch {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid white;
+        }
+        .color-swatch.selected {
+            transform: scale(1.2);
+            border-color: gold;
+        }
+        .speed-limit-slider {
+            margin: 20px 0;
+        }
+        input[type="range"] {
+            width: 100%;
+            margin: 10px 0;
+        }
+        .start-btn {
+            background: #27ae60;
+            border: none;
+            padding: 14px 28px;
+            font-size: 1.3rem;
+            font-weight: bold;
+            border-radius: 60px;
+            color: white;
+            margin-top: 20px;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        #game-ui {
+            position: fixed;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            pointer-events: none;
+            z-index: 100;
+        }
+        .controls-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+            pointer-events: auto;
+        }
+        .steering-panel {
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(8px);
+            border-radius: 120px;
+            width: 130px;
+            height: 130px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid rgba(255,255,255,0.5);
+        }
+        .steering-wheel-icon {
+            width: 90px;
+            height: 90px;
+            background: #34495e;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 45px;
+            color: white;
+            border: 3px solid #95a5a6;
+            transition: transform 0.05s linear;
+            cursor: grab;
+            touch-action: none;
+        }
+        .pedals {
+            display: flex;
+            gap: 15px;
+        }
+        .gas-pedal, .brake-pedal {
+            width: 85px;
+            height: 130px;
+            border-radius: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+        }
+        .gas-pedal {
+            background: #27ae60;
+            box-shadow: 0 6px 0 #1e8449;
+        }
+        .brake-pedal {
+            background: #e74c3c;
+            box-shadow: 0 6px 0 #c0392b;
+        }
+        .gas-pedal:active, .brake-pedal:active {
+            transform: translateY(4px);
+        }
+        .speedometer {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.8);
+            padding: 12px 24px;
+            border-radius: 50px;
+            color: #f39c12;
+            font-size: 2rem;
+            font-weight: bold;
+            font-family: monospace;
+            z-index: 150;
+            border: 2px solid #f39c12;
+        }
+        .instruction {
+            position: fixed;
+            bottom: 170px;
+            left: 20px;
+            background: rgba(0,0,0,0.6);
+            padding: 8px 15px;
+            border-radius: 20px;
+            color: white;
+            font-size: 12px;
+            z-index: 150;
+        }
+        .hidden { display: none !important; }
+        
+        @media (max-width: 700px) {
+            .steering-panel { width: 100px; height: 100px; }
+            .steering-wheel-icon { width: 70px; height: 70px; font-size: 35px; }
+            .gas-pedal, .brake-pedal { width: 70px; height: 110px; font-size: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="welcome-screen">
+        <div class="welcome-card">
+            <img class="logo-img" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='45' fill='%23f4d03f'/%3E%3Ccircle cx='35' cy='40' r='5' fill='black'/%3E%3Ccircle cx='65' cy='40' r='5' fill='black'/%3E%3Cpath d='M35 65 Q50 80 65 65' stroke='black' stroke-width='4' fill='none'/%3E%3C/svg%3E" alt="My Son">
+            <h2>🏎️ Junior Racer 🏎️</h2>
+            <div class="vehicle-select">
+                <div class="vehicle-option" data-vehicle="car">🚘 Car</div>
+                <div class="vehicle-option" data-vehicle="bus">🚌 Bus</div>
+            </div>
+            <div class="color-palette">
+                <div class="color-swatch" style="background:#e74c3c;" data-color="#e74c3c"></div>
+                <div class="color-swatch" style="background:#3498db;" data-color="#3498db"></div>
+                <div class="color-swatch" style="background:#2ecc71;" data-color="#2ecc71"></div>
+                <div class="color-swatch" style="background:#f1c40f;" data-color="#f1c40f"></div>
+                <div class="color-swatch" style="background:#e67e22;" data-color="#e67e22"></div>
+                <div class="color-swatch" style="background:#9b59b6;" data-color="#9b59b6"></div>
+                <div class="color-swatch" style="background:#1abc9c;" data-color="#1abc9c"></div>
+            </div>
+            <div class="speed-limit-slider">
+                <label>⚡ Max Speed: <span id="speed-limit-value">80</span> km/h</label>
+                <input type="range" id="max-speed-limit" min="30" max="120" value="80" step="5">
+            </div>
+            <button class="start-btn" id="start-game">🏁 START DRIVING 🏁</button>
+        </div>
+    </div>
+
+    <div id="game-ui" class="hidden">
+        <div class="controls-row">
+            <div class="steering-panel">
+                <div class="steering-wheel-icon" id="steering-wheel">⌘</div>
+            </div>
+            <div class="pedals">
+                <div class="gas-pedal" id="gas-pedal">GAS</div>
+                <div class="brake-pedal" id="brake-pedal">BRAKE</div>
+            </div>
+        </div>
+    </div>
+    <div id="speedometer" class="speedometer hidden">🚀 <span id="speed-value">0</span> km/h</div>
+    <div class="instruction hidden" id="instruction">🎮 Drag steering wheel LEFT/RIGHT to turn</div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+
+        let scene, camera, renderer, car;
+        let currentSpeed = 0, steeringInput = 0, gasPressed = false, brakePressed = false;
+        let carRotation = 0, carX = 0, carZ = 0;
+        let maxSpeed = 80;
+        let vehicleType = "car", carColor = "#e74c3c";
+        
+        // World objects
+        let roadCurve = 0;
+        let roadSegments = [];
+        let scenery = [];
+        
+        // Larger scale for buildings (3x bigger than car)
+        const CAR_SIZE = 1.0;
+        const BUILDING_SCALE = 2.5;
+        
+        function createCar(color, type) {
+            const group = new THREE.Group();
+            let width = 0.9, height = 0.4, length = 1.3;
+            if (type === "bus") { width = 1.0; height = 0.6; length = 1.9; }
+            
+            // Body
+            const bodyMat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.2, metalness: 0.3 });
+            const body = new THREE.Mesh(new THREE.BoxGeometry(width, height, length), bodyMat);
+            body.position.y = height/2;
+            body.castShadow = true;
+            group.add(body);
+            
+            // Roof
+            const roofMat = new THREE.MeshStandardMaterial({ color: 0xccccdd, metalness: 0.6 });
+            const roof = new THREE.Mesh(new THREE.BoxGeometry(width*0.8, height*0.3, length*0.8), roofMat);
+            roof.position.y = height + 0.1;
+            group.add(roof);
+            
+            // Wheels (bigger)
+            const wheelGeo = new THREE.CylinderGeometry(0.14, 0.14, 0.1, 16);
+            const wheelMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.3 });
+            const positions = [
+                [-width/2 + 0.15, 0.1, -length/2 + 0.2], [width/2 - 0.15, 0.1, -length/2 + 0.2],
+                [-width/2 + 0.15, 0.1, length/2 - 0.2], [width/2 - 0.15, 0.1, length/2 - 0.2]
+            ];
+            positions.forEach(pos => {
+                const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+                wheel.rotation.z = Math.PI/2;
+                wheel.position.set(pos[0], pos[1], pos[2]);
+                wheel.castShadow = true;
+                group.add(wheel);
+            });
+            
+            return group;
+        }
+        
+        function createBuilding(x, z) {
+            const group = new THREE.Group();
+            const height = 2.0 + Math.random() * 2.5;
+            const width = 1.2 + Math.random() * 0.8;
+            const depth = 1.2 + Math.random() * 0.8;
+            const colors = [0xe74c3c, 0x3498db, 0x2ecc71, 0xf1c40f, 0xe67e22, 0x9b59b6, 0x1abc9c, 0x95a5a6];
+            const material = new THREE.MeshStandardMaterial({ color: colors[Math.floor(Math.random() * colors.length)], roughness: 0.3 });
+            const building = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), material);
+            building.position.y = height/2;
+            building.castShadow = true;
+            group.add(building);
+            
+            // Windows
+            const windowMat = new THREE.MeshStandardMaterial({ color: 0xffaa66, emissive: 0x442200 });
+            for (let i = 0; i < 3; i++) {
+                const windowGeo = new THREE.BoxGeometry(0.3, 0.3, 0.05);
+                const win = new THREE.Mesh(windowGeo, windowMat);
+                win.position.set(0.4, height * 0.5 + i * 0.5, depth/2 + 0.05);
+                group.add(win);
+                const win2 = new THREE.Mesh(windowGeo, windowMat);
+                win2.position.set(-0.4, height * 0.5 + i * 0.5, depth/2 + 0.05);
+                group.add(win2);
+            }
+            
+            group.position.set(x, 0, z);
+            return group;
+        }
+        
+        function createTree(x, z) {
+            const group = new THREE.Group();
+            const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.35, 0.8, 6), new THREE.MeshStandardMaterial({ color: 0x8B4513 }));
+            trunk.position.y = 0.4;
+            group.add(trunk);
+            
+            const foliage1 = new THREE.Mesh(new THREE.ConeGeometry(0.5, 0.8, 8), new THREE.MeshStandardMaterial({ color: 0x2ecc71 }));
+            foliage1.position.y = 0.9;
+            group.add(foliage1);
+            
+            const foliage2 = new THREE.Mesh(new THREE.ConeGeometry(0.4, 0.6, 8), new THREE.MeshStandardMaterial({ color: 0x27ae60 }));
+            foliage2.position.y = 1.4;
+            group.add(foliage2);
+            
+            group.position.set(x, 0, z);
+            return group;
+        }
+        
+        function createCurvedRoad(z, curveOffset) {
+            const group = new THREE.Group();
+            
+            // Main road
+            const roadMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.5 });
+            const road = new THREE.Mesh(new THREE.PlaneGeometry(7, 15), roadMat);
+            road.rotation.x = -Math.PI/2;
+            road.position.y = -0.05;
+            road.receiveShadow = true;
+            group.add(road);
+            
+            // Lane markings
+            const lineMat = new THREE.MeshStandardMaterial({ color: 0xffdd99 });
+            for (let i = -2; i <= 2; i += 2) {
+                const line = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.05, 15), lineMat);
+                line.position.set(i, 0.02, 0);
+                group.add(line);
+            }
+            
+            // Center dashed line
+            for (let i = -6; i <= 6; i += 1.5) {
+                const dash = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.05, 0.8), new THREE.MeshStandardMaterial({ color: 0xffaa55 }));
+                dash.position.set(0, 0.02, i);
+                group.add(dash);
+            }
+            
+            group.position.set(curveOffset, 0, z);
+            return group;
+        }
+        
+        function generateWorld() {
+            // Create curved road segments
+            for (let z = -60; z <= 100; z += 15) {
+                // Create S-curves and bends
+                let curveOffset = Math.sin(z * 0.08) * 2.5 + Math.cos(z * 0.05) * 1.5;
+                const roadPiece = createCurvedRoad(z, curveOffset);
+                scene.add(roadPiece);
+                roadSegments.push({ mesh: roadPiece, originalZ: z, curve: curveOffset });
+                
+                // Add buildings and trees on sides (BIG scale)
+                for (let side = -1; side <= 1; side += 2) {
+                    const xPos = side * (5.5 + Math.abs(curveOffset) + Math.random() * 1.5);
+                    const isBuilding = Math.random() > 0.4;
+                    const obj = isBuilding ? createBuilding(xPos, z + (Math.random() - 0.5) * 4) : createTree(xPos, z + (Math.random() - 0.5) * 4);
+                    scene.add(obj);
+                    scenery.push({ mesh: obj, originalZ: z });
+                }
+            }
+        }
+        
+        function updateWorld(carZPos) {
+            // Recycle road segments
+            roadSegments.forEach(segment => {
+                if (segment.mesh.position.z < carZPos - 40) {
+                    segment.mesh.position.z += roadSegments.length * 15;
+                    // Create new curve pattern
+                    let newCurve = Math.sin(segment.mesh.position.z * 0.08) * 2.5 + Math.cos(segment.mesh.position.z * 0.05) * 1.5;
+                    segment.mesh.position.x = newCurve;
+                    segment.curve = newCurve;
+                }
+            });
+            
+            // Recycle scenery
+            scenery.forEach(obj => {
+                if (obj.mesh.position.z < carZPos - 45) {
+                    obj.mesh.position.z += 100;
+                    const side = Math.random() > 0.5 ? -6.5 : 6.5;
+                    obj.mesh.position.x = side + (Math.random() - 0.5) * 2;
+                }
+            });
+        }
+        
+        function updatePhysics(deltaTime) {
+            // Gas and brake
+            if (gasPressed) {
+                currentSpeed += 12 * deltaTime;
+                if (currentSpeed > maxSpeed) currentSpeed = maxSpeed;
+            }
+            if (brakePressed) {
+                if (currentSpeed > 0) {
+                    currentSpeed -= 15 * deltaTime;
+                    if (currentSpeed < 0) currentSpeed = 0;
+                } else if (currentSpeed === 0) {
+                    currentSpeed = -8;
+                } else {
+                    currentSpeed -= 12 * deltaTime;
+                    if (currentSpeed < -25) currentSpeed = -25;
+                }
+            }
+            if (!gasPressed && !brakePressed) {
+                currentSpeed *= 0.96;
+                if (Math.abs(currentSpeed) < 0.2) currentSpeed = 0;
+            }
+            
+            // STEERING - Car turns based on steering wheel input
+            if (Math.abs(currentSpeed) > 0.5) {
+                let turnSpeed = steeringInput * 3.5 * deltaTime;
+                if (currentSpeed < 0) turnSpeed = -turnSpeed * 0.7;
+                carRotation += turnSpeed;
+                carRotation = Math.min(0.8, Math.max(-0.8, carRotation));
+                
+                // Move car left/right based on rotation
+                let moveX = carRotation * Math.abs(currentSpeed) * 3 * deltaTime;
+                carX += moveX;
+                carX = Math.min(4.5, Math.max(-4.5, carX));
+            }
+            
+            // Apply rotation to car mesh
+            car.rotation.y = carRotation;
+            
+            // Move car forward
+            carZ += currentSpeed * deltaTime;
+            car.position.x = carX;
+            car.position.z = carZ;
+            
+            // Get road curve at car position
+            let currentRoadCurve = 0;
+            for (let seg of roadSegments) {
+                if (Math.abs(seg.mesh.position.z - carZ) < 10) {
+                    currentRoadCurve = seg.curve;
+                    break;
+                }
+            }
+            
+            // Gentle road following
+            if (Math.abs(currentSpeed) > 2) {
+                let roadForce = (currentRoadCurve - carX) * 1.5 * deltaTime;
+                carX += Math.min(0.3, Math.max(-0.3, roadForce));
+            }
+            
+            // Update world
+            updateWorld(carZ);
+            
+            // Camera behind car
+            const targetCamX = carX * 0.4;
+            const targetCamZ = carZ - 7;
+            camera.position.x += (targetCamX - camera.position.x) * 0.1;
+            camera.position.z += (targetCamZ - camera.position.z) * 0.1;
+            camera.position.y = 4;
+            camera.lookAt(car.position);
+            
+            // Update UI
+            document.getElementById('speed-value').innerText = Math.floor(Math.abs(currentSpeed));
+        }
+        
+        function initGame() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87CEEB);
+            scene.fog = new THREE.Fog(0x87CEEB, 60, 150);
+            
+            // BRIGHT LIGHTING - Fix darkness
+            camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 200);
+            camera.position.set(0, 4, 7);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.body.appendChild(renderer.domElement);
+            
+            // Bright ambient light
+            const ambientLight = new THREE.AmbientLight(0x88aaff, 0.8);
+            scene.add(ambientLight);
+            
+            // Main directional light (sun)
+            const sunLight = new THREE.DirectionalLight(0xfff5e6, 1.5);
+            sunLight.position.set(10, 20, 5);
+            sunLight.castShadow = true;
+            sunLight.shadow.mapSize.width = 1024;
+            sunLight.shadow.mapSize.height = 1024;
+            scene.add(sunLight);
+            
+            // Fill light from below
+            const fillLight = new THREE.PointLight(0x88aaff, 0.5);
+            fillLight.position.set(0, 2, 0);
+            scene.add(fillLight);
+            
+            // Back rim light
+            const rimLight = new THREE.PointLight(0xffaa66, 0.6);
+            rimLight.position.set(0, 3, -5);
+            scene.add(rimLight);
+            
+            // Additional fill light
+            const extraFill = new THREE.PointLight(0xccaa88, 0.4);
+            extraFill.position.set(3, 5, 3);
+            scene.add(extraFill);
+            
+            // Create car
+            car = createCar(carColor, vehicleType);
+            car.castShadow = true;
+            scene.add(car);
+            
+            // Generate world
+            generateWorld();
+            
+            // Reset position
+            carZ = 0;
+            carX = 0;
+            currentSpeed = 0;
+            carRotation = 0;
+            
+            // Animation loop
+            let lastTime = performance.now();
+            function animate() {
+                const now = performance.now();
+                let delta = Math.min(0.033, (now - lastTime) / 1000);
+                lastTime = now;
+                updatePhysics(delta);
+                renderer.render(scene, camera);
+                requestAnimationFrame(animate);
+            }
+            animate();
+        }
+        
+        // Event handlers
+        document.getElementById('start-game').addEventListener('click', () => {
+            vehicleType = document.querySelector('.vehicle-option.selected').getAttribute('data-vehicle');
+            carColor = document.querySelector('.color-swatch.selected').getAttribute('data-color');
+            maxSpeed = parseInt(document.getElementById('max-speed-limit').value);
+            
+            document.getElementById('welcome-screen').classList.add('hidden');
+            document.getElementById('game-ui').classList.remove('hidden');
+            document.getElementById('speedometer').classList.remove('hidden');
+            document.getElementById('instruction').classList.remove('hidden');
+            
+            initGame();
+            
+            // Pedal controls
+            const gasPedal = document.getElementById('gas-pedal');
+            const brakePedal = document.getElementById('brake-pedal');
+            
+            gasPedal.addEventListener('mousedown', () => gasPressed = true);
+            gasPedal.addEventListener('mouseup', () => gasPressed = false);
+            gasPedal.addEventListener('mouseleave', () => gasPressed = false);
+            gasPedal.addEventListener('touchstart', () => gasPressed = true);
+            gasPedal.addEventListener('touchend', () => gasPressed = false);
+            
+            brakePedal.addEventListener('mousedown', () => brakePressed = true);
+            brakePedal.addEventListener('mouseup', () => brakePressed = false);
+            brakePedal.addEventListener('mouseleave', () => brakePressed = false);
+            brakePedal.addEventListener('touchstart', () => brakePressed = true);
+            brakePedal.addEventListener('touchend', () => brakePressed = false);
+            
+            // Steering wheel
+            const wheel = document.getElementById('steering-wheel');
+            let active = false;
+            let startX = 0;
+            
+            const handleMove = (clientX) => {
+                if (!active) return;
+                let delta = (clientX - startX) / 30;
+                delta = Math.min(1, Math.max(-1, delta));
+                steeringInput = delta;
+                wheel.style.transform = `rotate(${delta * 70}deg)`;
+            };
+            
+            const handleStart = (e) => {
+                active = true;
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                startX = clientX;
+                e.preventDefault();
+            };
+            
+            const handleEnd = () => {
+                active = false;
+                steeringInput = 0;
+                wheel.style.transform = `rotate(0deg)`;
+            };
+            
+            wheel.addEventListener('mousedown', handleStart);
+            window.addEventListener('mousemove', (e) => { if (active) handleMove(e.clientX); });
+            window.addEventListener('mouseup', handleEnd);
+            wheel.addEventListener('touchstart', handleStart);
+            window.addEventListener('touchmove', (e) => { if (active && e.touches[0]) handleMove(e.touches[0].clientX); });
+            window.addEventListener('touchend', handleEnd);
+        });
+        
+        // Speed limit slider
+        const speedLimitSlider = document.getElementById('max-speed-limit');
+        const speedLimitValue = document.getElementById('speed-limit-value');
+        speedLimitSlider.addEventListener('input', () => {
+            speedLimitValue.innerText = speedLimitSlider.value;
+        });
+        
+        // Selection handlers
+        document.querySelectorAll('.vehicle-option').forEach(opt => {
+            opt.addEventListener('click', () => {
+                document.querySelectorAll('.vehicle-option').forEach(o => o.classList.remove('selected'));
+                opt.classList.add('selected');
+            });
+        });
+        
+        document.querySelectorAll('.color-swatch').forEach(sw => {
+            sw.addEventListener('click', () => {
+                document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+                sw.classList.add('selected');
+            });
+        });
+        
+        document.querySelector('.vehicle-option').classList.add('selected');
+        document.querySelector('.color-swatch').classList.add('selected');
+    </script>
+</body>
+</html>
